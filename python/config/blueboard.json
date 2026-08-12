@@ -1,7 +1,7 @@
 {
   "bindings": [
-    {"cc": 20, "edge": "press", "action": "buttonA"},
-    {"cc": 21, "edge": "press", "action": "buttonB"},
+    {"cc": 20, "edge": "press", "action": "ctrlShiftR"},
+    {"cc": 21, "edge": "press", "action": "altTab"},
     {"cc": 22, "edge": "press", "action": "buttonC"},
     {"cc": 23, "edge": "press", "action": "buttonD"}
   ]

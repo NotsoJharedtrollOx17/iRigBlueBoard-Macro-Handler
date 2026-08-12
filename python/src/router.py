@@ -24,8 +24,9 @@ def loadBindings(path: Path) -> list[Binding]:
 
 
 class Router:
-    def __init__(self, bindings: list[Binding]) -> None:
+    def __init__(self, bindings: list[Binding], actions=None) -> None:
         self.bindings = bindings
+        self.actions = actions
         self.buttonState: dict[int, bool] = {}
 
     def handleEvent(self, event: MidiEvent) -> None:
@@ -50,6 +51,12 @@ class Router:
             if binding.cc == event.data1 and binding.edge == edge:
                 # Initial milestone intentionally logs actions instead of injecting input.
                 logger.info("action=%s cc=%d edge=%s", binding.action, binding.cc, edge)
+                if self.actions is not None:
+                    try:
+                        self.actions.invoke(binding.action)
+                    except Exception:
+                        # A macro backend must never terminate BLE notification handling.
+                        logger.exception("macro action failed: action=%s", binding.action)
 
     def releaseAll(self) -> None:
         active = [cc for cc, pressed in self.buttonState.items() if pressed]

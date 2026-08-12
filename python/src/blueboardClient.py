@@ -105,7 +105,10 @@ class BlueBoardClient:
                             packet = await eventQueue.get()
                             logger.debug("packet=%s", packet.hex(" "))
                             for event in self.decoder.decode(packet):
-                                self.eventHandler(event)
+                                try:
+                                    self.eventHandler(event)
+                                except Exception:
+                                    logger.exception("event handler failed; continuing notification loop")
 
                     worker = asyncio.create_task(consumeNotifications())
                     await client.start_notify(midiCharacteristicUuid, onNotification)

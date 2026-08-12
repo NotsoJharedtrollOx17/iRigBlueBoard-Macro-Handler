@@ -7,6 +7,7 @@ from pathlib import Path
 
 from blueboardClient import BlueBoardClient, discoverBlueBoards
 from router import Router, loadBindings
+from platformActions import createActions
 
 
 def buildParser() -> argparse.ArgumentParser:
@@ -26,6 +27,7 @@ def buildParser() -> argparse.ArgumentParser:
         default=Path(__file__).resolve().parents[1] / "config" / "blueboard.json",
     )
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--execute-actions", action="store_true", help="Enable native keyboard macros")
     return parser
 
 
@@ -39,7 +41,7 @@ async def run(args: argparse.Namespace) -> None:
             print(f"{device.name or '<unnamed>'}\t{device.address}\tRSSI={device.rssi}")
         return
 
-    router = Router(loadBindings(args.config))
+    router = Router(loadBindings(args.config), createActions(args.execute_actions))
     client = BlueBoardClient(
         router.handleEvent,
         router.releaseAll,

@@ -137,3 +137,9 @@ From the `python` directory:
 The current milestone logs configured actions from `config/blueboard.json`.
 Windows `SendInput` actions should only be enabled after the hardware
 notification path has been confirmed.
+
+Native keyboard macros are opt-in. Run the client with `--execute-actions` to
+enable them. Windows uses the native `SendInput` ABI; Linux uses a `/dev/uinput` virtual
+keyboard and requires narrowly scoped access to that device. The sample
+bindings map A to `Ctrl+Shift+R` and B to `Alt+Tab`; edit
+`python/config/blueboard.json` to change them. Unknown actions remain logged.
