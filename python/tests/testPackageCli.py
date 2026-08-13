@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from blueboard_macro_handler.ble_midi import encodeBleMidi
-from blueboard_macro_handler.cli import loadReplayPackets, main
+from blueboard_macro_handler.cli import loadReplayPackets, logWelcome, main
 
 
 class PackageCliTests(unittest.TestCase):
@@ -26,3 +26,12 @@ class PackageCliTests(unittest.TestCase):
     def testOutboundEncoderProducesBleMidiFrame(self) -> None:
         packet = encodeBleMidi(0xB0, bytes((20, 127)), timestamp=0)
         self.assertEqual(packet, bytes.fromhex("80 80 B0 14 7F"))
+
+    def testWelcomeLogIdentifiesAuthorAndProject(self) -> None:
+        with self.assertLogs("blueboard.cli", level="INFO") as captured:
+            logWelcome("replay")
+        output = "\n".join(captured.output)
+        self.assertIn("Developer : Abraham Jhared Flores Azcona", output)
+        self.assertIn("License   : MIT License (Copyright 2026 Abraham Jhared Flores Azcona)", output)
+        self.assertIn("Mode      : offline BLE-MIDI packet replay (blueboard replay)", output)
+        self.assertIn("Independent project", output)

@@ -20,6 +20,28 @@ from .state import defaultStatePath, loadLastAddress
 
 logger = logging.getLogger("blueboard.cli")
 
+authorName = "Abraham Jhared Flores Azcona"
+
+
+def logWelcome(command: str) -> None:
+    mode = "offline BLE-MIDI packet replay (blueboard replay)" if command == "replay" else {
+        "scan": "BlueBoard discovery scan (blueboard scan)",
+        "run": "live BlueBoard macro control mode (blueboard run)",
+        "validate": "configuration validation (blueboard validate)",
+        "init-config": "configuration initialization (blueboard init-config)",
+    }.get(command, command)
+    logger.info("================================================================================")
+    logger.info("  iRig BlueBoard Macro Handler v%s", __version__)
+    logger.info("  Independent BLE-MIDI macro routing for Windows and Linux")
+    logger.info("--------------------------------------------------------------------------------")
+    logger.info("  Developer : %s", authorName)
+    logger.info("  License   : MIT License (Copyright 2026 %s)", authorName)
+    logger.info("  Mode      : %s", mode)
+    logger.info("  Purpose   : Direct BlueBoard input to configurable operating-system actions")
+    logger.info("--------------------------------------------------------------------------------")
+    logger.info("  Independent project; not affiliated with or endorsed by IK Multimedia or iRig")
+    logger.info("================================================================================")
+
 
 def defaultConfigPath() -> Path:
     return Path(str(files("blueboard_macro_handler").joinpath("default_config.json")))
@@ -127,6 +149,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Wrote {args.path}")
         return 0
     configureLogging(args.debug, args.json_logs, args.log_file)
+    logWelcome(args.command)
     try:
         metrics = asyncio.run(asyncCommand(args))
     except KeyboardInterrupt:
