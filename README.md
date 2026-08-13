@@ -54,6 +54,30 @@ Windows macros use the native `SendInput` API. They affect the foreground
 application and cannot cross Windows integrity levels: controlling an elevated
 application requires the handler to run at a compatible level.
 
+The setup script defaults to a repository-local virtual environment. To install
+into the selected machine-wide Python installation instead, run:
+
+```powershell
+.\setupBlueBoard.ps1 -Scope global
+```
+
+Use `-User` for a global per-user install without administrator privileges:
+
+```powershell
+.\setupBlueBoard.ps1 -Scope global -User
+```
+
+Linux supports the equivalent scopes:
+
+```bash
+./setupBlueBoard.sh --scope global
+./setupBlueBoard.sh --scope global --user
+```
+
+Global installation uses the active `py -3` or `python3` interpreter. Its
+Python `Scripts`/`bin` directory must be on `PATH`; otherwise invoke
+`py -m blueboard_macro_handler` or `python3 -m blueboard_macro_handler`.
+
 ## Linux setup
 
 Install the system Bluetooth and virtual-input prerequisites (package names
