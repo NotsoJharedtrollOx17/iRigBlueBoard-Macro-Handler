@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime
 from time import monotonic
 
 
@@ -20,7 +21,7 @@ class JsonFormatter(logging.Formatter):
 
 def configureLogging(debug: bool = False, jsonLogs: bool = False, logFile: str | None = None) -> None:
     level = logging.DEBUG if debug else logging.INFO
-    formatter: logging.Formatter = JsonFormatter() if jsonLogs else logging.Formatter("%(relativeCreated)09.0fms %(levelname)s %(name)s: %(message)s")
+    formatter: logging.Formatter = JsonFormatter() if jsonLogs else WallClockFormatter()
     handlers: list[logging.Handler] = [logging.StreamHandler()]
     if logFile:
         handlers.append(logging.FileHandler(logFile, encoding="utf-8"))
@@ -30,3 +31,11 @@ def configureLogging(debug: bool = False, jsonLogs: bool = False, logFile: str |
     for handler in handlers:
         handler.setFormatter(formatter)
         root.addHandler(handler)
+
+
+class WallClockFormatter(logging.Formatter):
+    """Human-readable local wall-clock time with millisecond precision."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        timestamp = datetime.fromtimestamp(record.created).astimezone().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3]
+        return f"{timestamp} {record.levelname} {record.name}: {record.getMessage()}"

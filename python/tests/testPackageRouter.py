@@ -1,3 +1,4 @@
+import logging
 import unittest
 
 from blueboard_macro_handler.config import ActionSpec, AppConfig, Binding
@@ -35,3 +36,20 @@ class PackageRouterTests(unittest.TestCase):
         router = Router(AppConfig((Binding(20, "press", ActionSpec("keyboard", keys=("R",))),)), FakeActions(fail=True), metrics)
         router.handleEvent(self.event(127))
         self.assertEqual(metrics.actionFailures, 1)
+
+    def testLogNamesButtonAndConfiguredMacro(self) -> None:
+        actions = FakeActions()
+        router = Router(AppConfig((Binding(20, "press", ActionSpec("keyboard", keys=("CTRL", "R"))),)), actions)
+        with self.assertLogs("blueboard.router", level=logging.INFO) as captured:
+            router.handleEvent(self.event(127))
+        self.assertIn("button=A", captured.output[0])
+        self.assertIn("edge=press", captured.output[0])
+        self.assertIn("source=ble-midi", captured.output[0])
+        self.assertIn("macro=CTRL+R", captured.output[0])
+
+    def testUnmappedButtonIsExplicitlyReported(self) -> None:
+        router = Router(AppConfig((Binding(22, "press", None),)), FakeActions())
+        with self.assertLogs("blueboard.router", level=logging.INFO) as captured:
+            router.handleEvent(self.event(127, cc=22))
+        self.assertIn("button=C", captured.output[0])
+        self.assertIn("macro=unmapped", captured.output[0])
