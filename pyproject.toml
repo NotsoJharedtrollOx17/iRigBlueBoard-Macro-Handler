@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "blueboard-macro-handler"
+version = "0.2.0"
+description = "Cross-platform BLE-MIDI macro handler for the iRig BlueBoard"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+authors = [{name = "Abraham Jhared Flores Azcona"}]
+dependencies = ["bleak>=1.0,<4"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Operating System :: Microsoft :: Windows",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Topic :: Multimedia :: Sound/Audio :: MIDI",
+]
+
+[project.optional-dependencies]
+linux = ["evdev>=1.7,<2"]
+dev = ["build>=1.2", "pytest>=8", "ruff>=0.9"]
+
+[project.scripts]
+blueboard = "blueboard_macro_handler.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "python/src"}
+
+[tool.setuptools.packages.find]
+where = ["python/src"]
+include = ["blueboard_macro_handler*"]
+
+[tool.setuptools.package-data]
+blueboard_macro_handler = ["default_config.json"]
+
+[tool.pytest.ini_options]
+testpaths = ["python/tests"]
+pythonpath = ["python/src"]
+python_files = ["test*.py"]
+python_classes = ["*Tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120

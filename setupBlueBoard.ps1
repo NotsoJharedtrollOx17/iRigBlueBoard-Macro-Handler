@@ -13,6 +13,6 @@ if (-not (Test-Path -LiteralPath $pythonExe)) {
     & py -3 -m venv $venvDir
 }
 
-Write-Host "Installing Python dependencies..."
-& $pythonExe -m pip install -r (Join-Path $pythonDir "requirements.txt")
+Write-Host "Installing the BlueBoard package and dependencies..."
+& $pythonExe -m pip install --editable $repoRoot
 Write-Host "Setup complete. Run .\scanBlueBoard.ps1 or .\runBlueBoard.ps1"

@@ -1,8 +1,25 @@
 {
+  "device": {
+    "name": "BlueBoard",
+    "scanTimeout": 8.0,
+    "pair": false
+  },
   "bindings": [
-    {"cc": 20, "edge": "press", "action": "ctrlShiftR"},
-    {"cc": 21, "edge": "press", "action": "altTab"},
-    {"cc": 22, "edge": "press", "action": "buttonC"},
-    {"cc": 23, "edge": "press", "action": "buttonD"}
+    {
+      "cc": 20,
+      "channel": 1,
+      "edge": "press",
+      "cooldownMs": 250,
+      "action": {"type": "keyboard", "keys": ["CTRL", "SHIFT", "R"]}
+    },
+    {
+      "cc": 21,
+      "channel": 1,
+      "edge": "press",
+      "cooldownMs": 250,
+      "action": {"type": "keyboard", "keys": ["ALT", "TAB"]}
+    },
+    {"cc": 22, "channel": 1, "edge": "press", "action": null},
+    {"cc": 23, "channel": 1, "edge": "press", "action": null}
   ]
 }

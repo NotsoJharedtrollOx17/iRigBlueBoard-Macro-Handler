@@ -2,3 +2,7 @@ __pycache__/
 *.py[cod]
 .venv/
 logs/
+build/
+dist/
+*.egg-info/
+.wheel-test/

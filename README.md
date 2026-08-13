@@ -1,145 +1,206 @@
 # iRig BlueBoard Macro Handler
 
-> **Notice:** This is an independent, community-developed project. It is not
-> affiliated with, sponsored by, or endorsed by IK Multimedia, iRig, or any
-> manufacturer of the referenced hardware and software. Product names and
-> trademarks belong to their respective owners.
+> **Notice:** This independent, community-developed project is not affiliated
+> with, sponsored by, or endorsed by IK Multimedia, iRig, or any manufacturer
+> of referenced hardware or software. Product names and trademarks belong to
+> their respective owners.
 
-The first runnable milestone is a Python 3.10+ Windows diagnostic client. It
-scans for the BlueBoard, connects to its BLE-MIDI GATT service, subscribes to
-notifications, decodes MIDI, and logs CC20-CC23 button edges. It deliberately
-does not inject keyboard input yet, so BLE connection issues can be diagnosed
-independently from macro behavior.
+A Python 3.10+ command-line application that connects directly to an iRig
+BlueBoard over BLE-MIDI, decodes its buttons, and routes them to configurable
+Windows or Linux actions. The package provides scanning, reconnecting, dry-run,
+packet replay, configuration validation, JSON logging, and run summaries.
 
-## Connecting the BlueBoard to a device
+The tested BlueBoard mode emits MIDI channel 1 Control Change messages:
 
-The BlueBoard must be started in its BLE-MIDI mode before the computer scans
-for it. A BLE peripheral generally accepts one active connection, so release
-any existing Android, tablet, or DAW connection first.
+| Button | Press | Release | Default action |
+|---|---|---|---|
+| A | CC20 value 127 | CC20 value 0 | `Ctrl+Shift+R` |
+| B | CC21 value 127 | CC21 value 0 | `Alt+Tab` |
+| C | CC22 value 127 | CC22 value 0 | Unmapped |
+| D | CC23 value 127 | CC23 value 0 | Unmapped |
 
-1. **Prepare the board.** Install working batteries and switch Bluetooth on in
-   the target computer or phone. If the board is currently connected to
-   another device, close that application and disable Bluetooth on the other
-   device temporarily.
-2. **Start BLE-MIDI mode.** Hold button **C** while powering on the
-   BlueBoard. Keep holding C until the board has finished starting, then place
-   it close to the target device during the first connection attempt.
-3. **Leave system Bluetooth pairing available.** On Windows, open **Settings >
-   Bluetooth & devices** and ensure Bluetooth is enabled. Do not select an
-   unrelated classic-Bluetooth audio profile; this project needs the board's
-   BLE-MIDI GATT service.
-4. **Scan from this project.** From the `python` directory, run:
+Actions are disabled unless `--execute-actions` is supplied.
 
-   ```powershell
-   .\.venv\Scripts\python.exe src\main.py scan --debug --scan-timeout 15
-   ```
+## Connect the BlueBoard
 
-   The output should include the BlueBoard name, its Windows BLE address, and
-   an RSSI value. If it is found, copy the address for the next step.
-5. **Connect and subscribe.** Run the client using the discovered address:
+1. Disconnect it from Android, a DAW, or any other active BLE client.
+2. Hold button **C** while powering on the BlueBoard. Keep holding C until it
+   has finished starting in BLE-MIDI mode.
+3. Enable Bluetooth on the computer and keep the board nearby.
+4. Scan, then run the client. If service discovery requires authentication,
+   retry with `--pair`.
 
-   ```powershell
-   .\.venv\Scripts\python.exe src\main.py run --address "DEVICE-ADDRESS" --debug
-   ```
+The client remembers the last successful device address. After a forced board
+power-off, restart it while holding C; the reconnect loop will claim it when it
+advertises again.
 
-   The client connects to service
-   `03b80e5a-ede8-4b33-a751-6ce34ec4c700`, subscribes to characteristic
-   `7772e5db-3868-4112-a1a9-f2669d106bf3`, and waits for notifications. A
-   successful connection is reported as `state=connected`.
-6. **Verify the MIDI path.** Press and release each button. The log should
-   show Control Change events on MIDI channel 1: A=`CC20`, B=`CC21`, C=`CC22`,
-   and D=`CC23`; press values are normally `127` and release values `0`.
+## Windows setup
 
-If GATT discovery or subscription requires authentication, repeat the run
-command with `--pair`. Windows may display a pairing prompt; complete it and
-allow the command to reconnect. Pairing is not required for every BlueBoard
-firmware revision.
-
-### Connecting from Android first
-
-Android can be used to confirm that the board is transmitting BLE-MIDI, but it
-must be disconnected before Windows can claim the board. Stop the MIDI/BLE
-connector application, disconnect or forget the board in Android Bluetooth
-settings, and then power-cycle the BlueBoard while holding C. Otherwise the
-Windows scan may see no BlueBoard even though the hardware is powered on.
-
-### Troubleshooting
-
-- **No device appears:** power-cycle while holding C, move within a few meters,
-  confirm batteries, and extend `--scan-timeout` to 30 seconds.
-- **The board appears but connection fails:** close Android/DAW MIDI apps,
-  remove stale Windows Bluetooth entries if necessary, then retry with
-  `--pair`.
-- **Connected but no events arrive:** verify that the client reports
-  `state=subscribing` followed by `state=connected`; restart the board in mode
-  C and retry. Notifications are enabled by the program, not by a keyboard
-  pairing profile.
-- **Events stop after a while:** leave the client running; it logs the failure,
-  clears active button state, and retries with bounded delays of 1, 2, 4, 8,
-  16, and 20 seconds.
-- **A macro does not affect an elevated application:** Windows input injection
-  cannot cross integrity levels. The diagnostic milestone only logs actions;
-  any future `SendInput` action must run at an appropriate integrity level.
-
-## Windows quick start
-
-1. Install a current 64-bit Python and enable Bluetooth in Windows.
-2. Open PowerShell in the `python` directory and create the environment:
-
-   ```powershell
-   py -3.10 -m venv .venv
-   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-   ```
-
-3. Disconnect the BlueBoard from Android (a BLE peripheral normally accepts
-   only one active client), then hold the BlueBoard **C** switch while powering
-   it on in BLE-MIDI mode.
-4. Check that Windows can see it:
-
-   ```powershell
-   .\.venv\Scripts\python.exe src\main.py scan --debug
-   ```
-
-5. Connect and watch button events:
-
-   ```powershell
-   .\.venv\Scripts\python.exe src\main.py run --debug
-   ```
-
-   A successful press on A resembles `controlChange channel=1 data1=20
-   data2=127`; release uses `data2=0`. Buttons B-D use CC21-CC23.
-
-The repository-root PowerShell launchers provide the same workflow without
-changing directories:
+From PowerShell in the repository root:
 
 ```powershell
 .\setupBlueBoard.ps1
 .\scanBlueBoard.ps1 --debug --scan-timeout 15
-.\runBlueBoard.ps1 --debug
+.\runBlueBoard.ps1 --debug --execute-actions
 ```
 
-If PowerShell blocks local scripts for the current session, run
-`Set-ExecutionPolicy -Scope Process Bypass` and retry. The launchers do not
-change the system-wide execution policy.
-
-If service discovery fails before subscribing, retry with `--pair`. You can
-also pass the address printed by `scan` via `--address`. Stop with Ctrl+C.
-Reconnect attempts and failures remain visible in the log.
-
-## Tests
-
-From the `python` directory:
+If local scripts are blocked for the current terminal only:
 
 ```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test*.py" -v
+Set-ExecutionPolicy -Scope Process Bypass
 ```
 
-The current milestone logs configured actions from `config/blueboard.json`.
-Windows `SendInput` actions should only be enabled after the hardware
-notification path has been confirmed.
+Windows macros use the native `SendInput` API. They affect the foreground
+application and cannot cross Windows integrity levels: controlling an elevated
+application requires the handler to run at a compatible level.
 
-Native keyboard macros are opt-in. Run the client with `--execute-actions` to
-enable them. Windows uses the native `SendInput` ABI; Linux uses a `/dev/uinput` virtual
-keyboard and requires narrowly scoped access to that device. The sample
-bindings map A to `Ctrl+Shift+R` and B to `Alt+Tab`; edit
-`python/config/blueboard.json` to change them. Unknown actions remain logged.
+## Linux setup
+
+Install the system Bluetooth and virtual-input prerequisites (package names
+shown for Linux Mint/Ubuntu):
+
+```bash
+sudo apt install bluez python3-venv python3-dev
+sudo modprobe uinput
+./setupBlueBoard.sh
+./scanBlueBoard.sh --debug --scan-timeout 15
+./runBlueBoard.sh --debug --execute-actions
+```
+
+The Linux keyboard backend uses `python-evdev` and `/dev/uinput`. Grant a
+narrowly scoped group permission instead of running the application
+permanently as root. A typical local rule is:
+
+```text
+KERNEL=="uinput", GROUP="input", MODE="0660"
+```
+
+Place it in `/etc/udev/rules.d/99-blueboard-uinput.rules`, add the user to the
+`input` group, reload udev rules, and log out/in. Review this permission with
+the machine's administrator because membership in `input` is security
+sensitive. Bleak communicates with BlueZ through D-Bus; no kernel driver or raw
+HCI replacement is used.
+
+## Installed CLI
+
+The project is a standard Python package. Install it from a checkout:
+
+```powershell
+py -m pip install .
+blueboard scan --debug
+blueboard run --execute-actions
+```
+
+On Linux, include its optional keyboard dependency:
+
+```bash
+python3 -m pip install '.[linux]'
+blueboard run --execute-actions
+```
+
+Available commands:
+
+```text
+blueboard scan          Discover matching BLE devices
+blueboard run           Connect, reconnect, decode, and route
+blueboard replay FILE   Replay captured BLE-MIDI packets without hardware
+blueboard validate      Validate and print normalized configuration
+blueboard init-config   Create an editable configuration
+```
+
+Useful options include `--config`, `--debug`, `--json-logs`, `--log-file`,
+`--address`, `--pair`, `--scan-timeout`, `--dry-run`, and
+`--execute-actions`. `run` defaults to dry-run behavior unless execution is
+explicitly enabled. Ctrl+C is the panic/shutdown control and releases managed
+input state.
+
+## Configuration
+
+The repository launchers load [python/config/blueboard.json](python/config/blueboard.json).
+Installed users can create a copy with:
+
+```text
+blueboard init-config blueboard.json
+blueboard validate --config blueboard.json
+```
+
+Bindings support MIDI channel, press/release edge, cooldown, and an optional
+typed action:
+
+```json
+{
+  "cc": 20,
+  "channel": 1,
+  "edge": "press",
+  "cooldownMs": 250,
+  "action": {"type": "keyboard", "keys": ["CTRL", "SHIFT", "R"]}
+}
+```
+
+Supported actions are:
+
+- `keyboard`: an arbitrary supported key combination;
+- `log`: record a message without another side effect;
+- `udp`: send a UTF-8 datagram to a host and port;
+- `launch`: start a program with an argument array and `shell=false`;
+- `null`: leave the button intentionally unmapped.
+
+Example UDP and application actions:
+
+```json
+{"type": "udp", "host": "127.0.0.1", "port": 9000, "message": "/preset/next"}
+{"type": "launch", "program": "notepad.exe", "args": []}
+```
+
+Only use configurations you trust. `launch` deliberately accepts an argument
+array and never invokes a command shell.
+
+## Replay and logs
+
+Test routing without the board or side effects:
+
+```powershell
+blueboard replay python\tests\fixtures\blueboardPackets.json --debug
+```
+
+For machine-readable diagnostics:
+
+```powershell
+blueboard run --json-logs --log-file blueboard.jsonl
+```
+
+Each run reports packet, event, action, failure, reconnect, runtime, and
+connected-time counters at shutdown.
+
+## Development and packaging
+
+Run the complete test suite:
+
+```powershell
+.\python\.venv\Scripts\python.exe -m unittest discover -s python\tests -p "test*.py" -v
+```
+
+Build distributable artifacts after installing the development extra:
+
+```powershell
+py -m pip install -e ".[dev]"
+py -m build
+```
+
+Outbound BLE writes and standards-valid BLE-MIDI encoding are available as
+internal building blocks. LED feedback is not enabled by default because the
+BlueBoard-specific outbound LED message semantics have not yet been confirmed
+from hardware.
+
+## Troubleshooting
+
+- **Not discovered:** restart while holding C, disconnect other BLE clients,
+  check batteries, move closer, and try `--scan-timeout 30`.
+- **Saved address not found:** the client logs a warning and falls back to a
+  matching BlueBoard name or BLE-MIDI service advertisement.
+- **Connects without events:** confirm logs reach `state=subscribing` and
+  `state=connected`, then verify the board was started in mode C.
+- **Macros only appear in logs:** add `--execute-actions`.
+- **Linux cannot open uinput:** load the module and verify the user's udev/group
+  permission for `/dev/uinput`.
+- **Action fails:** the failure is logged and BLE processing continues.
