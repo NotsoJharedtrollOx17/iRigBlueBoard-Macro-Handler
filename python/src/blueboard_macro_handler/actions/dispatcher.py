@@ -29,7 +29,15 @@ class ActionDispatcher:
         return self.keyboard
 
     def invoke(self, action: ActionSpec) -> bool:
-        logger.info("action type=%s execute=%s", action.type, self.execute)
+        if action.type == "keyboard":
+            details = f"keys={'+'.join(action.keys)}"
+        elif action.type == "udp":
+            details = f"target={action.host}:{action.port} message={action.message!r}"
+        elif action.type == "launch":
+            details = f"program={action.program!r} args={list(action.args)!r}"
+        else:
+            details = f"message={action.message!r}"
+        logger.info("action type=%s execute=%s %s", action.type, self.execute, details)
         if not self.execute or action.type == "log":
             if action.message:
                 logger.info("action message=%s", action.message)

@@ -1,3 +1,4 @@
+import logging
 import unittest
 from unittest.mock import patch
 
@@ -21,8 +22,10 @@ class PackageActionsTests(unittest.TestCase):
 
     def testArbitraryKeyboardComboDispatches(self) -> None:
         keyboard = FakeKeyboard()
-        self.assertTrue(ActionDispatcher(True, keyboard).invoke(ActionSpec("keyboard", keys=("CTRL", "F12"))))
+        with self.assertLogs("blueboard.actions", level=logging.INFO) as captured:
+            self.assertTrue(ActionDispatcher(True, keyboard).invoke(ActionSpec("keyboard", keys=("CTRL", "F12"))))
         self.assertEqual(keyboard.combos, [("CTRL", "F12")])
+        self.assertIn("keys=CTRL+F12", captured.output[0])
 
     def testWindowsAbiAndKeyValidation(self) -> None:
         self.assertEqual(__import__("ctypes").sizeof(Input), 40)
