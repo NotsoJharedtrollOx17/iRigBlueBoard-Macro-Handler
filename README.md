@@ -139,6 +139,14 @@ the machine's administrator because membership in `input` is security
 sensitive. Bleak communicates with BlueZ through D-Bus; no kernel driver or raw
 HCI replacement is used.
 
+Some older BlueBoard firmware exposes BLE-MIDI as the final GATT service. A
+known BlueZ service-discovery failure can advertise that service but omit it
+from D-Bus, producing a repeated connect/disconnect loop. On Linux, the client
+detects this exact condition and falls back to `gatttool` from the already
+required `bluez` package. The fallback subscribes directly to the BlueBoard's
+fixed BLE-MIDI handles and does not pair, bond, or trust the pedal. Other
+devices and platforms continue to use Bleak normally.
+
 ## Installed CLI
 
 The project is a standard Python package. Install it from a checkout:
@@ -262,6 +270,10 @@ from hardware.
   matching BlueBoard name or BLE-MIDI service advertisement.
 - **Connects without events:** confirm logs reach `state=subscribing` and
   `state=connected`, then verify the board was started in mode C.
+- **Linux repeatedly connects and disconnects:** run with `--debug`. A
+  `backend=bluez-gatttool` connection means the automatic compatibility path
+  handled BlueZ omitting the board's final BLE-MIDI service. Do not pair or
+  trust the pedal manually.
 - **Macros only appear in logs:** add `--execute-actions`.
 - **Linux cannot open uinput:** load the module and verify the user's udev/group
   permission for `/dev/uinput`.

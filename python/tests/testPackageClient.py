@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
-from blueboard_macro_handler.client import BlueBoardClient, DiscoveredDevice
+from blueboard_macro_handler.client import BlueBoardClient, DiscoveredDevice, parseGatttoolNotification
 from blueboard_macro_handler.models import RunMetrics
 from blueboard_macro_handler.state import loadLastAddress, saveLastAddress
 
@@ -54,3 +54,11 @@ class PackageClientTests(unittest.IsolatedAsyncioTestCase):
             path = Path(directory) / "state.json"
             saveLastAddress(path, "AA:BB")
             self.assertEqual(loadLastAddress(path), "AA:BB")
+
+    def testParsesGatttoolMidiNotification(self) -> None:
+        line = "Notification handle = 0x0022 value: 80 80 b0 14 7f"
+        self.assertEqual(parseGatttoolNotification(line), bytes.fromhex("80 80 b0 14 7f"))
+
+    def testIgnoresOtherGatttoolOutput(self) -> None:
+        self.assertIsNone(parseGatttoolNotification("Characteristic value was written successfully"))
+        self.assertIsNone(parseGatttoolNotification("Notification handle = 0x001c value: 64"))

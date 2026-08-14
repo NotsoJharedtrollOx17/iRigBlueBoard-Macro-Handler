@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
+import shutil
+import sys
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -12,7 +15,29 @@ from .state import saveLastAddress
 
 serviceUuid = "03b80e5a-ede8-4b33-a751-6ce34ec4c700"
 midiCharacteristicUuid = "7772e5db-3868-4112-a1a9-f2669d106bf3"
+blueBoardMidiValueHandle = "0x0022"
+blueBoardMidiCccHandle = "0x0023"
 logger = logging.getLogger("blueboard.client")
+gatttoolNotificationPattern = re.compile(
+    rf"(?:Notification|Indication) handle = {blueBoardMidiValueHandle} value:\s*(?P<value>(?:[0-9a-fA-F]{{2}}\s*)+)$",
+    re.IGNORECASE,
+)
+
+
+class BluezMidiServiceOmitted(RuntimeError):
+    def __init__(self, address: str) -> None:
+        super().__init__("BlueZ omitted the advertised BLE-MIDI service")
+        self.address = address
+
+
+def parseGatttoolNotification(line: str) -> bytes | None:
+    match = gatttoolNotificationPattern.search(line.strip())
+    if match is None:
+        return None
+    try:
+        return bytes.fromhex(match.group("value"))
+    except ValueError:
+        return None
 
 
 @dataclass(frozen=True)
@@ -71,6 +96,68 @@ class BlueBoardClient:
         async with self.writeLock:
             await self.currentClient.write_gatt_char(midiCharacteristicUuid, packet, response=response)
 
+    def handlePacket(self, packet: bytes) -> None:
+        self.metrics.packets += 1
+        logger.debug("packet=%s", packet.hex(" "))
+        for event in self.decoder.decode(packet):
+            try: self.eventHandler(event)
+            except Exception: logger.exception("event handler failed; continuing")
+
+    async def runBluezGatttoolFallback(self, address: str, stopEvent: asyncio.Event) -> None:
+        gatttool = shutil.which("gatttool")
+        if gatttool is None:
+            raise RuntimeError("BlueZ omitted the BLE-MIDI service and gatttool is unavailable; install the full bluez package")
+        command = [gatttool, "-b", address, "--char-write-req", f"--handle={blueBoardMidiCccHandle}", "--value=0100", "--listen"]
+        stdbuf = shutil.which("stdbuf")
+        if stdbuf is not None:
+            command = [stdbuf, "-oL", "-eL", *command]
+        logger.warning("BlueZ D-Bus omitted the advertised BLE-MIDI service; using the BlueZ gatttool compatibility path")
+        self.transition(ConnectionState.subscribing, backend="bluez-gatttool", characteristic=blueBoardMidiValueHandle)
+        process = await asyncio.create_subprocess_exec(
+            *command,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.STDOUT,
+        )
+        if process.stdout is None:
+            raise RuntimeError("could not capture gatttool output")
+        stopTask = asyncio.create_task(stopEvent.wait())
+        subscribed = False
+        try:
+            while True:
+                lineTask = asyncio.create_task(process.stdout.readline())
+                done, _pending = await asyncio.wait((lineTask, stopTask), return_when=asyncio.FIRST_COMPLETED)
+                if stopTask in done:
+                    lineTask.cancel()
+                    await asyncio.gather(lineTask, return_exceptions=True)
+                    return
+                line = lineTask.result()
+                if not line:
+                    returnCode = await process.wait()
+                    raise RuntimeError(f"gatttool compatibility connection ended with status {returnCode}")
+                message = line.decode(errors="replace").strip()
+                logger.debug("gatttool=%s", message)
+                if not subscribed and "Characteristic value was written successfully" in message:
+                    subscribed = True
+                    self.metrics.beginConnection()
+                    self.transition(ConnectionState.connected, address=address, backend="bluez-gatttool")
+                    if self.statePath:
+                        try: saveLastAddress(self.statePath, address)
+                        except OSError as error: logger.warning("could not save device state: %s", error)
+                    continue
+                packet = parseGatttoolNotification(message)
+                if packet is not None:
+                    self.handlePacket(packet)
+        finally:
+            stopTask.cancel()
+            await asyncio.gather(stopTask, return_exceptions=True)
+            if process.returncode is None:
+                process.terminate()
+                try:
+                    await asyncio.wait_for(process.wait(), timeout=3.0)
+                except asyncio.TimeoutError:
+                    process.kill()
+                    await process.wait()
+
     async def run(self, stopEvent: asyncio.Event | None = None) -> None:
         from bleak import BleakClient
         stopEvent = stopEvent or asyncio.Event()
@@ -87,6 +174,8 @@ class BlueBoardClient:
                     self.currentClient = client
                     self.transition(ConnectionState.discovering)
                     if client.services.get_service(serviceUuid) is None:
+                        if sys.platform.startswith("linux"):
+                            raise BluezMidiServiceOmitted(device.address)
                         raise RuntimeError("BLE-MIDI service was not discovered")
                     self.transition(ConnectionState.subscribing, characteristic=midiCharacteristicUuid)
                     def onNotification(_characteristic, data: bytearray, queue=eventQueue) -> None:
@@ -95,11 +184,7 @@ class BlueBoardClient:
                     async def consumeNotifications(queue=eventQueue) -> None:
                         while True:
                             packet = await queue.get()
-                            self.metrics.packets += 1
-                            logger.debug("packet=%s", packet.hex(" "))
-                            for event in self.decoder.decode(packet):
-                                try: self.eventHandler(event)
-                                except Exception: logger.exception("event handler failed; continuing")
+                            self.handlePacket(packet)
                     worker = asyncio.create_task(consumeNotifications(), name="blueboard-notifications")
                     await client.start_notify(midiCharacteristicUuid, onNotification)
                     self.transition(ConnectionState.connected, address=device.address)
@@ -116,6 +201,11 @@ class BlueBoardClient:
                         await client.stop_notify(midiCharacteristicUuid)
             except asyncio.CancelledError:
                 raise
+            except BluezMidiServiceOmitted as error:
+                try:
+                    await self.runBluezGatttoolFallback(error.address, stopEvent)
+                except Exception as fallbackError:  # noqa: BLE001 - reconnect after compatibility backend failures
+                    self.transition(ConnectionState.backoff, error=repr(fallbackError), retry=retryCount, delay=f"{retryDelay:.0f}s")
             except Exception as error:  # noqa: BLE001 - reconnect after backend-specific BLE failures
                 self.transition(ConnectionState.backoff, error=repr(error), retry=retryCount, delay=f"{retryDelay:.0f}s")
             finally:
