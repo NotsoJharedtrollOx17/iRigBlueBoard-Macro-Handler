@@ -24,7 +24,7 @@ async def discoverBlueBoards(nameSubstring: str, timeout: float) -> list[Discove
     try:
         from bleak import BleakScanner
     except ImportError as error:
-        raise RuntimeError("Bleak is not installed; run: py -m pip install -r requirements.txt") from error
+        raise RuntimeError("Bleak is not installed; run: py -m pip install -e . from the repository root") from error
 
     found: dict[str, DiscoveredDevice] = {}
 
