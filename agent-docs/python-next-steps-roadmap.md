@@ -1,6 +1,6 @@
 # Python Implementation Roadmap
 
-## Implementation update (version 0.2.0)
+## Implementation update (version 0.3.0)
 
 The primary roadmap items are now implemented in the installable
 `blueboard_macro_handler` package: typed and backward-compatible configuration,

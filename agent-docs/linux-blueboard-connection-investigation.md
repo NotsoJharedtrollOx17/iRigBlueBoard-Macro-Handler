@@ -148,7 +148,7 @@ The full suite has three unrelated Windows-only failures when run on Linux:
 two calls to Windows-specific `ctypes` APIs and one Windows structure-size
 assertion.
 
-The package metadata and runtime version were also aligned to `0.2.1` in
+The package metadata and runtime version are aligned to `0.3.0` in
 `pyproject.toml` and `python/src/blueboard_macro_handler/__init__.py`.
 
 ## Operational test procedure
