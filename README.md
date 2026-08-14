@@ -84,12 +84,24 @@ Install the system Bluetooth and virtual-input prerequisites (package names
 shown for Linux Mint/Ubuntu):
 
 ```bash
-sudo apt install bluez python3-venv python3-dev
-sudo modprobe uinput
 ./setupBlueBoard.sh
 ./scanBlueBoard.sh --debug --scan-timeout 15
 ./runBlueBoard.sh --debug --execute-actions
 ```
+
+The setup script automatically installs `bluez`, `python3-venv`,
+`python3-dev`, `python3-pip`, and `kmod` on Debian/Ubuntu/Linux Mint systems
+when `apt-get` is available. It also attempts to load the `uinput` kernel
+module. Use `--skip-system` when those prerequisites are already installed or
+when your distribution uses another package manager:
+
+```bash
+./setupBlueBoard.sh --skip-system
+```
+
+On non-Debian distributions, install the equivalent BlueZ, Python virtual
+environment/development, pip, and uinput packages with the native package
+manager before running the script.
 
 The Linux keyboard backend uses `python-evdev` and `/dev/uinput`. Grant a
 narrowly scoped group permission instead of running the application
