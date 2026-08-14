@@ -86,6 +86,21 @@ the system-wide copy after changing the checkout.
 
 ## Linux setup
 
+To update an existing checkout and refresh its installation in one step, make
+sure local changes are committed or stashed, then run the matching updater:
+
+```bash
+./updateBlueBoard.sh                         # local venv
+./updateBlueBoard.sh --scope global          # system-wide; requires sudo
+./updateBlueBoard.sh --scope global --user   # pipx per-user install
+```
+
+The updater stops before fetching if the checkout has uncommitted changes. It
+then fetches and fast-forwards the local `main` branch from `origin/main`,
+before rerunning the selected setup scope. The Windows equivalent is
+`.\updateBlueBoard.ps1`, with `-Scope global` and `-User` using the same
+meanings as the setup script.
+
 Install the system Bluetooth and virtual-input prerequisites (package names
 shown for Linux Mint/Ubuntu):
 

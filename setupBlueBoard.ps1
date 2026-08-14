@@ -16,7 +16,7 @@ if ($Scope -eq "venv") {
     Write-Host "Setup complete. Run .\scanBlueBoard.ps1 or .\runBlueBoard.ps1"
     exit 0
 }
-$globalArgs = @("-m", "pip", "install", $repoRoot)
+$globalArgs = @("-m", "pip", "install", "--upgrade", $repoRoot)
 if ($User) { $globalArgs += "--user" }
 Write-Host "Installing the BlueBoard package into the selected global Python environment..."
 & py -3 @globalArgs
