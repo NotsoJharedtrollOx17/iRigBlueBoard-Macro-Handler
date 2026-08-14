@@ -67,16 +67,22 @@ Use `-User` for a global per-user install without administrator privileges:
 .\setupBlueBoard.ps1 -Scope global -User
 ```
 
-Linux supports the equivalent scopes:
+Linux keeps the same scope API, with two safe global variants that avoid
+Ubuntu/Debian's PEP 668 restriction:
 
 ```bash
-./setupBlueBoard.sh --scope global
-./setupBlueBoard.sh --scope global --user
+./setupBlueBoard.sh --scope global         # system-wide; requires sudo
+./setupBlueBoard.sh --scope global --user  # current user; uses pipx
 ```
 
-Global installation uses the active `py -3` or `python3` interpreter. Its
-Python `Scripts`/`bin` directory must be on `PATH`; otherwise invoke
-`py -m blueboard_macro_handler` or `python3 -m blueboard_macro_handler`.
+Without `--user`, Linux installs a root-owned application environment at
+`/opt/blueboard-macro-handler/venv` and a `blueboard` launcher in
+`/usr/local/bin`, making it available to all users without modifying the OS
+Python. With `--user`, pipx installs an editable per-user command in the
+user's local binary directory; open a new terminal after setup if PATH was
+updated. Run the system-wide command only from a checkout you trust, because
+it installs code with elevated privileges. Re-run the same command to update
+the system-wide copy after changing the checkout.
 
 ## Linux setup
 
@@ -90,18 +96,19 @@ shown for Linux Mint/Ubuntu):
 ```
 
 The setup script automatically installs `bluez`, `python3-venv`,
-`python3-dev`, `python3-pip`, and `kmod` on Debian/Ubuntu/Linux Mint systems
-when `apt-get` is available. It also attempts to load the `uinput` kernel
-module. Use `--skip-system` when those prerequisites are already installed or
-when your distribution uses another package manager:
+`python3-dev`, and `kmod` on Debian/Ubuntu/Linux Mint systems when `apt-get`
+is available. Per-user global scope additionally installs `pipx`. It also
+attempts to load the `uinput` kernel module. Use `--skip-system` when those
+prerequisites are already installed or when your distribution uses another
+package manager:
 
 ```bash
 ./setupBlueBoard.sh --skip-system
 ```
 
 On non-Debian distributions, install the equivalent BlueZ, Python virtual
-environment/development, pip, and uinput packages with the native package
-manager before running the script.
+environment/development, uinput, and pipx (for `--scope global --user`)
+packages with the native package manager before running the script.
 
 The Linux keyboard backend uses `python-evdev` and `/dev/uinput`. Grant a
 narrowly scoped group permission instead of running the application
@@ -127,10 +134,14 @@ blueboard scan --debug
 blueboard run --execute-actions
 ```
 
-On Linux, include its optional keyboard dependency:
+On Linux, use the setup script so dependencies are installed into an isolated
+environment. Do not use system `python3 -m pip install` on Ubuntu/Debian,
+because those distributions protect their system Python:
 
 ```bash
-python3 -m pip install '.[linux]'
+./setupBlueBoard.sh                 # repository-local environment
+./setupBlueBoard.sh --scope global  # system-wide CLI
+./setupBlueBoard.sh --scope global --user  # pipx-managed per-user CLI
 blueboard run --execute-actions
 ```
 
