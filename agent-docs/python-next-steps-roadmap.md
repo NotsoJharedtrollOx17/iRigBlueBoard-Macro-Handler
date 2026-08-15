@@ -14,6 +14,17 @@ LED feedback remains intentionally disabled until its device-specific outbound
 message semantics are confirmed on hardware. Linux BLE and uinput behavior
 also require final validation on a Linux host with the physical BlueBoard.
 
+### Windows installation note
+
+`setupBlueBoard.ps1 -Scope global` installs outside the repository virtual
+environment. When the machine-wide Python directories are not writable, pip
+legitimately falls back to the current user's Python installation. The setup
+script resolves the executable directory using Python's installation scheme,
+including versioned paths such as
+`%APPDATA%\Python\Python314\Scripts`, adds it to the current session and
+persists it in the user `PATH`. A reboot is not required; use a new terminal
+window if another session was already open before setup.
+
 ## Current status
 
 The Windows Python milestone is operational:

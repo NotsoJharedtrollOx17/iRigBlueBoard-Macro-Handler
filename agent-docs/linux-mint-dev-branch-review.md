@@ -91,7 +91,11 @@ The Linux setup now avoids modifying an externally managed system Python:
 
 The system installer refuses to overwrite an unrelated existing launcher.
 Windows global installation now uses `--upgrade` so rerunning setup refreshes
-the installed package.
+the installed package. On Windows, the global scope is outside the repository
+virtual environment; if the machine Python is not writable, pip may select a
+per-user installation. The PowerShell setup script resolves the actual
+versioned Scripts directory, updates the current and future user `PATH`, and
+does not require a reboot.
 
 ### Documentation and evidence
 

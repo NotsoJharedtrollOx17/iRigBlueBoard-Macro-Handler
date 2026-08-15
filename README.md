@@ -67,6 +67,17 @@ Use `-User` for a global per-user install without administrator privileges:
 .\setupBlueBoard.ps1 -Scope global -User
 ```
 
+On Windows, `global` means that the command is available outside this
+repository's virtual environment; it does not necessarily mean a machine-wide
+administrator install. If the selected Python installation is not writable,
+pip automatically falls back to the current user's Python installation. The
+setup script detects the actual versioned Scripts directory created by Python
+(for example, `...\AppData\Roaming\Python\Python314\Scripts`), adds it to the
+current PowerShell session and persists it in the user's `PATH`. No reboot is
+required: `blueboard --version` works in the current session after setup, and
+new terminal windows inherit the updated `PATH`. Use `-User` explicitly when a
+non-administrator per-user install is desired.
+
 Linux keeps the same scope API, with two safe global variants that avoid
 Ubuntu/Debian's PEP 668 restriction:
 
