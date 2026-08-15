@@ -79,6 +79,11 @@ def buildParser() -> argparse.ArgumentParser:
         action="store_true",
         help="mirror A-D button state on the BlueBoard backlights",
     )
+    run.add_argument(
+        "--reset-leds",
+        action="store_true",
+        help="send one paced A-D-off sequence, then disconnect (requires --led-feedback)",
+    )
     run.add_argument("--state-file", type=Path, default=defaultStatePath())
 
     replay = commands.add_parser("replay", help="replay recorded BLE-MIDI packet fixtures")
@@ -126,6 +131,8 @@ async def asyncCommand(args: argparse.Namespace) -> RunMetrics | None:
     args.metrics = metrics
     actions = ActionDispatcher(execute=args.execute_actions)
     ledFeedback = LedFeedbackController(metrics) if getattr(args, "led_feedback", False) else None
+    if getattr(args, "reset_leds", False) and ledFeedback is None:
+        raise ValueError("--reset-leds requires --led-feedback")
     router = Router(config, actions, metrics, ledFeedback)
     try:
         if args.command == "replay":
@@ -147,6 +154,7 @@ async def asyncCommand(args: argparse.Namespace) -> RunMetrics | None:
             metrics=metrics,
             statePath=args.state_file,
             ledFeedback=ledFeedback,
+            resetLeds=args.reset_leds,
         )
         await client.run()
         return metrics

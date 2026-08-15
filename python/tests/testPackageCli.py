@@ -28,8 +28,9 @@ class PackageCliTests(unittest.TestCase):
         self.assertEqual(packet, bytes.fromhex("80 80 B0 14 7F"))
 
     def testRunAcceptsLedFeedbackFlag(self) -> None:
-        args = buildParser().parse_args(["run", "--led-feedback"])
+        args = buildParser().parse_args(["run", "--led-feedback", "--reset-leds"])
         self.assertTrue(args.led_feedback)
+        self.assertTrue(args.reset_leds)
 
     def testWelcomeLogIdentifiesAuthorAndProject(self) -> None:
         with self.assertLogs("blueboard.cli", level="INFO") as captured:

@@ -79,13 +79,29 @@ class BlueBoardClient:
         metrics: RunMetrics | None = None,
         statePath: Path | None = None,
         ledFeedback: LedFeedbackController | None = None,
+        resetLeds: bool = False,
     ) -> None:
         self.eventHandler, self.disconnectHandler = eventHandler, disconnectHandler
         self.nameSubstring, self.address, self.pair, self.scanTimeout = nameSubstring, address, pair, scanTimeout
         self.metrics, self.statePath, self.ledFeedback = metrics or RunMetrics(), statePath, ledFeedback
+        self.resetLeds = resetLeds
         self.decoder, self.writeLock = BleMidiDecoder(), asyncio.Lock()
         self.currentClient = None
         self.gatttoolStdin: asyncio.StreamWriter | None = None
+
+    @staticmethod
+    def ledFeedbackUsesWriteResponse(client) -> bool:
+        characteristic = client.services.get_characteristic(midiCharacteristicUuid)
+        if characteristic is None:
+            raise RuntimeError("BLE-MIDI characteristic was not discovered")
+        properties = set(characteristic.properties)
+        if "write" in properties:
+            logger.info("LED feedback transport=write-with-response")
+            return True
+        if "write-without-response" in properties:
+            logger.info("LED feedback transport=write-without-response; conservative pacing and release retry enabled")
+            return False
+        raise RuntimeError("BLE-MIDI characteristic does not support outbound writes")
 
     def transition(self, state: ConnectionState, **fields) -> None:
         details = " ".join(f"{key}={value}" for key, value in fields.items())
@@ -216,6 +232,9 @@ class BlueBoardClient:
                     self.metrics.beginConnection()
                     if self.ledFeedback is not None:
                         await self.ledFeedback.bind(self.writePacket)
+                    if self.resetLeds:
+                        logger.info("LED reset sent; disconnecting")
+                        stopEvent.set()
                     self.transition(ConnectionState.connected, address=address, backend="bluez-gatttool")
                     if self.statePath:
                         try: saveLastAddress(self.statePath, address)
@@ -267,8 +286,14 @@ class BlueBoardClient:
                             self.handlePacket(packet)
                     worker = asyncio.create_task(consumeNotifications(), name="blueboard-notifications")
                     if self.ledFeedback is not None:
-                        await self.ledFeedback.bind(self.writePacket)
+                        await self.ledFeedback.bind(
+                            self.writePacket,
+                            response=self.ledFeedbackUsesWriteResponse(client),
+                        )
                         feedbackBound = True
+                    if self.resetLeds:
+                        logger.info("LED reset sent; disconnecting")
+                        stopEvent.set()
                     await client.start_notify(midiCharacteristicUuid, onNotification)
                     self.transition(ConnectionState.connected, address=device.address)
                     self.metrics.beginConnection()

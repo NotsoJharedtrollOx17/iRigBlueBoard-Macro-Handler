@@ -52,13 +52,28 @@ In BLE-MIDI mode C, the four switch backlights are controlled by the host. Add
 
 The handler sends channel 1 CC20-CC23 with value 127 on press and value 0 on
 release. It initializes all four LEDs off after each successful connection,
-suppresses duplicate states, preserves write order through a bounded worker,
-and detaches the worker without attempting writes after disconnect.
+coalesces rapid state changes through a bounded worker, and detaches the
+worker without attempting writes after disconnect. When the BLE characteristic
+supports acknowledged writes, the handler uses them. Otherwise it spaces LED
+writes and retries only a released button's off command once; it does not send
+continuous background reconciliation traffic. LED packets deliberately use
+the fixed `80 80` timestamp header emitted by BlueBoard firmware; the general
+BLE-MIDI encoder remains capable of standards-valid changing timestamps.
 
 LED feedback is independent of macro execution, so `--led-feedback` works in
 the default dry-run mode and can also be combined with `--execute-actions`.
 This is momentary physical-button feedback; it does not represent persistent
 amplifier, preset, or effect state.
+
+If a legacy board has stopped responding to host LED commands, try one fresh,
+paced clear sequence before power-cycling it:
+
+```powershell
+.\runBlueBoard.ps1 --led-feedback --reset-leds --debug
+```
+
+The command cannot prove that the board accepted the clear because this
+BlueBoard exposes write-without-response on Windows.
 
 ## Windows setup
 

@@ -91,9 +91,14 @@ Values `>= 64` light the corresponding LED; values `< 64` clear it.
 The packet-building primitive already exists:
 
 ```python
-packet = encodeBleMidi(0xB0, bytes((20, 127)))
+packet = encodeBleMidi(0xB0, bytes((20, 127)), timestamp=0)
 await client.writePacket(packet, response=False)
 ```
+
+The explicit zero timestamp is a BlueBoard firmware compatibility requirement,
+not a change to the general BLE-MIDI encoder. Physical Windows tests showed
+intermittent LED handling with changing 13-bit timestamps, while the board's
+own packets consistently use the fixed `80 80` timestamp header.
 
 ### Implemented shape
 
@@ -110,7 +115,9 @@ LED feedback must mirror physical press/release even when a macro action fails. 
 
 On connect, clear A–D once to establish a known visual state. On disconnect, clear local feedback state without attempting writes; reinitialize after reconnect.
 
-Do not create one async task per MIDI event. A single feedback worker preserves output ordering and prevents bursty presses from creating uncontrolled tasks.
+The single feedback worker preserves output ordering and prevents bursty
+presses from creating uncontrolled write tasks. The release safeguard permits
+at most one delayed retry task per button, and a new press cancels that task.
 
 ## Validation required before enabling LEDs by default
 

@@ -11,6 +11,7 @@ from blueboard_macro_handler.state import loadLastAddress, saveLastAddress
 
 class FakeServices:
     def get_service(self, _uuid): return object()
+    def get_characteristic(self, _uuid): return type("Characteristic", (), {"properties": ["write"]})()
 
 
 class FakeBleakClient:
@@ -66,7 +67,9 @@ class FakeGatttoolProcess:
 
 class FakeLedFeedback:
     def __init__(self): self.bound = self.unbound = 0
-    async def bind(self, _writer): self.bound += 1
+    async def bind(self, _writer, *, response=False):
+        self.bound += 1
+        self.response = response
     async def unbind(self): self.unbound += 1
 
 
@@ -84,6 +87,44 @@ class PackageClientTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(FakeBleakClient.instance.stopped)
         self.assertEqual(metrics.packets, 1)
         self.assertEqual((feedback.bound, feedback.unbound), (1, 1))
+        self.assertTrue(feedback.response)
+
+    async def testResetLedsDisconnectsAfterFeedbackInitialization(self) -> None:
+        metrics, feedback = RunMetrics(), FakeLedFeedback()
+        device = type("Device", (), {"address": "AA:BB"})()
+        discovered = [DiscoveredDevice("iRig BlueBoard", "AA:BB", -50, device)]
+        client = BlueBoardClient(
+            lambda _event: None,
+            lambda: None,
+            nameSubstring="BlueBoard",
+            address=None,
+            pair=False,
+            scanTimeout=1,
+            metrics=metrics,
+            ledFeedback=feedback,
+            resetLeds=True,
+        )
+        with patch("blueboard_macro_handler.client.discoverBlueBoards", AsyncMock(return_value=discovered)), patch(
+            "bleak.BleakClient", FakeBleakClient
+        ):
+            await client.run()
+        self.assertTrue(FakeBleakClient.instance.stopped)
+        self.assertEqual((feedback.bound, feedback.unbound), (1, 1))
+
+    def testLedFeedbackUsesWriteResponseWhenAvailable(self) -> None:
+        client = BlueBoardClient(lambda _: None, lambda: None, nameSubstring="BlueBoard", address=None, pair=False, scanTimeout=1)
+        responseClient = type("Client", (), {"services": FakeServices()})()
+        self.assertTrue(client.ledFeedbackUsesWriteResponse(responseClient))
+
+    def testLedFeedbackFallsBackToUnacknowledgedWrites(self) -> None:
+        services = type(
+            "Services",
+            (),
+            {"get_characteristic": lambda _self, _uuid: type("Characteristic", (), {"properties": ["write-without-response"]})()},
+        )()
+        client = BlueBoardClient(lambda _: None, lambda: None, nameSubstring="BlueBoard", address=None, pair=False, scanTimeout=1)
+        responseClient = type("Client", (), {"services": services})()
+        self.assertFalse(client.ledFeedbackUsesWriteResponse(responseClient))
 
     async def testSavedAddressFallsBackToNameDiscovery(self) -> None:
         device = type("Device", (), {"address": "AA:BB"})()
