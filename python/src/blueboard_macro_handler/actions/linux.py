@@ -5,11 +5,15 @@ class LinuxKeyboard:
     def __init__(self) -> None:
         try:
             from evdev import UInput, ecodes
+            from evdev.uinput import UInputError
         except ImportError as error:
             raise RuntimeError("Linux keyboard macros require: pip install 'blueboard-macro-handler[linux]'") from error
         self.ecodes = ecodes
         self.keyMap = self._buildKeyMap(ecodes)
-        self.device = UInput({ecodes.EV_KEY: sorted(set(self.keyMap.values()))}, name="BlueBoard Macro Handler")
+        try:
+            self.device = UInput({ecodes.EV_KEY: sorted(set(self.keyMap.values()))}, name="BlueBoard Macro Handler")
+        except (OSError, UInputError) as error:
+            raise RuntimeError("Linux keyboard macros require a usable /dev/uinput; run setupBlueBoard.sh and join the input group") from error
         self.activeKeys: list[int] = []
 
     @staticmethod

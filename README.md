@@ -110,6 +110,32 @@ shown for Linux Mint/Ubuntu):
 ./runBlueBoard.sh --debug --execute-actions
 ```
 
+For Linux keyboard macros, the verified first-install sequence is:
+
+```bash
+./setupBlueBoard.sh --skip-system
+sudo usermod -aG input "$USER"
+# log out, then log back in
+groups                         # confirm "input" is listed
+./runBlueBoard.sh --debug --execute-actions
+```
+
+As an explicit convenience, setup can perform the group change for you:
+
+```bash
+./setupBlueBoard.sh --skip-system --add-input-group
+```
+
+This option changes persistent account permissions and still requires a logout
+and login. It is opt-in because membership in `input` grants access to system
+input devices; without the flag, setup only prints the equivalent `usermod`
+command.
+
+The launcher checks `/dev/uinput` and the current user's `input` membership
+before starting BLE when `--execute-actions` is present. This turns a silent
+macro failure into an immediate setup message. The relogin is required for
+the new group membership to reach the current session.
+
 The setup script automatically installs `bluez`, `python3-venv`,
 `python3-dev`, and `kmod` on Debian/Ubuntu/Linux Mint systems when `apt-get`
 is available. Per-user global scope additionally installs `pipx`. It also
@@ -125,19 +151,21 @@ On non-Debian distributions, install the equivalent BlueZ, Python virtual
 environment/development, uinput, and pipx (for `--scope global --user`)
 packages with the native package manager before running the script.
 
-The Linux keyboard backend uses `python-evdev` and `/dev/uinput`. Grant a
-narrowly scoped group permission instead of running the application
-permanently as root. A typical local rule is:
+The Linux keyboard backend uses `python-evdev` and `/dev/uinput`. Setup now
+loads the `uinput` driver, creates or refreshes the device node, and applies a
+narrow `input`-group permission when udev is available. If the current user is
+not already in that group, setup prints the required `usermod` command; log
+out and in afterward. Do not run the application permanently as root. A
+typical local rule is:
 
 ```text
-KERNEL=="uinput", GROUP="input", MODE="0660"
+KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"
 ```
 
-Place it in `/etc/udev/rules.d/99-blueboard-uinput.rules`, add the user to the
-`input` group, reload udev rules, and log out/in. Review this permission with
-the machine's administrator because membership in `input` is security
-sensitive. Bleak communicates with BlueZ through D-Bus; no kernel driver or raw
-HCI replacement is used.
+The setup script places this rule in `/etc/udev/rules.d/99-blueboard-uinput.rules`
+when no rule exists. Review this permission with the machine's administrator
+because membership in `input` is security sensitive. Bleak communicates with
+BlueZ through D-Bus; no kernel driver or raw HCI replacement is used.
 
 Some older BlueBoard firmware exposes BLE-MIDI as the final GATT service. A
 known BlueZ service-discovery failure can advertise that service but omit it
@@ -275,6 +303,8 @@ from hardware.
   handled BlueZ omitting the board's final BLE-MIDI service. Do not pair or
   trust the pedal manually.
 - **Macros only appear in logs:** add `--execute-actions`.
-- **Linux cannot open uinput:** load the module and verify the user's udev/group
-  permission for `/dev/uinput`.
+- **Linux keyboard macros do not work:** rerun
+  `./setupBlueBoard.sh --skip-system --add-input-group`, log out/in, and
+  confirm `input` appears in `groups`. The launcher performs the same
+  `/dev/uinput` and group checks before `--execute-actions` starts.
 - **Action fails:** the failure is logged and BLE processing continues.

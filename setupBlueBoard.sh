@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
-scope="venv"; user_install="false"; skip_system="false"
+scope="venv"; user_install="false"; skip_system="false"; add_input_group="false"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --scope) scope="${2:?--scope requires venv or global}"; shift 2;;
     --user) user_install="true"; shift;;
     --skip-system) skip_system="true"; shift;;
-    *) printf 'Usage: %s [--scope venv|global] [--user] [--skip-system]\n' "$0" >&2; exit 2;;
+    --add-input-group) add_input_group="true"; shift;;
+    *) printf 'Usage: %s [--scope venv|global] [--user] [--skip-system] [--add-input-group]\n' "$0" >&2; exit 2;;
   esac
 done
 [[ "$scope" == "venv" || "$scope" == "global" ]] || { printf 'Scope must be venv or global.\n' >&2; exit 2; }
@@ -17,6 +18,51 @@ system_venv="$system_prefix/venv"
 system_launcher="/usr/local/bin/blueboard"
 privilege=(sudo)
 [[ "${EUID:-$(id -u)}" -eq 0 ]] && privilege=()
+
+ensure_uinput() {
+  local current_user uinput_rule rule_tmp
+  current_user="${SUDO_USER:-$(id -un)}"
+  if ! command -v modprobe >/dev/null 2>&1; then
+    printf 'Warning: modprobe is unavailable; cannot prepare /dev/uinput.\n' >&2
+    return
+  fi
+  "${privilege[@]}" modprobe uinput || {
+    printf 'Warning: could not load the uinput kernel driver.\n' >&2
+    return
+  }
+  uinput_rule="/etc/udev/rules.d/99-blueboard-uinput.rules"
+  if command -v udevadm >/dev/null 2>&1; then
+    if [[ ! -e "$uinput_rule" ]]; then
+      rule_tmp="$(mktemp)"
+      printf '%s\n' 'KERNEL=="uinput", GROUP="input", MODE="0660", OPTIONS+="static_node=uinput"' > "$rule_tmp"
+      "${privilege[@]}" install -m 0644 "$rule_tmp" "$uinput_rule"
+      rm -f "$rule_tmp"
+    fi
+    "${privilege[@]}" udevadm control --reload-rules || true
+    "${privilege[@]}" udevadm trigger --action=add --subsystem-match=misc --sysname-match=uinput || true
+    "${privilege[@]}" udevadm settle || true
+  fi
+  if [[ ! -c /dev/uinput ]]; then
+    "${privilege[@]}" mknod -m 0660 /dev/uinput c 10 223 2>/dev/null || true
+  fi
+  if [[ -c /dev/uinput ]]; then
+    getent group input >/dev/null 2>&1 && "${privilege[@]}" chgrp input /dev/uinput || true
+    "${privilege[@]}" chmod 0660 /dev/uinput || true
+    if id -nG "$current_user" | tr ' ' '\n' | grep -qx input; then
+      printf 'Virtual keyboard ready at /dev/uinput for user %s.\n' "$current_user"
+    else
+      if [[ "$add_input_group" == "true" ]]; then
+        command -v usermod >/dev/null 2>&1 || { printf 'Warning: usermod is unavailable; add %s to input manually.\n' "$current_user" >&2; return; }
+        "${privilege[@]}" usermod -aG input "$current_user"
+        printf 'Added %s to the input group. Log out and in before running keyboard macros.\n' "$current_user" >&2
+      else
+        printf 'Virtual keyboard node ready, but user %s is not in the input group. Add the user with: sudo usermod -aG input %s; then log out and in.\n' "$current_user" "$current_user" >&2
+      fi
+    fi
+  else
+    printf 'Warning: /dev/uinput is unavailable; Linux keyboard macros cannot run.\n' >&2
+  fi
+}
 
 if [[ "$skip_system" != "true" ]]; then
   if command -v apt-get >/dev/null 2>&1; then
@@ -32,6 +78,8 @@ if [[ "$skip_system" != "true" ]]; then
     printf 'Install BlueZ, Python venv/dev support, and uinput prerequisites using your distribution package manager.\n' >&2
   fi
 fi
+
+ensure_uinput
 
 if [[ "$scope" == "venv" ]]; then
   python3 -m venv "$venv_dir"
