@@ -42,6 +42,9 @@ class RunMetrics:
     events: int = 0
     actions: int = 0
     actionFailures: int = 0
+    ledFeedbackWrites: int = 0
+    ledFeedbackFailures: int = 0
+    ledFeedbackDrops: int = 0
     reconnects: int = 0
 
     def beginConnection(self) -> None:
@@ -64,5 +67,8 @@ class RunMetrics:
             "events": self.events,
             "actions": self.actions,
             "actionFailures": self.actionFailures,
+            "ledFeedbackWrites": self.ledFeedbackWrites,
+            "ledFeedbackFailures": self.ledFeedbackFailures,
+            "ledFeedbackDrops": self.ledFeedbackDrops,
             "reconnects": self.reconnects,
         }

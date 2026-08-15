@@ -8,7 +8,8 @@
 A Python 3.10+ command-line application that connects directly to an iRig
 BlueBoard over BLE-MIDI, decodes its buttons, and routes them to configurable
 Windows or Linux actions. The package provides scanning, reconnecting, dry-run,
-packet replay, configuration validation, JSON logging, and run summaries.
+packet replay, configuration validation, JSON logging, run summaries, and
+opt-in button-backlight feedback.
 
 The tested BlueBoard mode emits MIDI channel 1 Control Change messages:
 
@@ -19,7 +20,9 @@ The tested BlueBoard mode emits MIDI channel 1 Control Change messages:
 | C | CC22 value 127 | CC22 value 0 | Unmapped |
 | D | CC23 value 127 | CC23 value 0 | Unmapped |
 
-Actions are disabled unless `--execute-actions` is supplied.
+Actions are disabled unless `--execute-actions` is supplied. BlueBoard LED
+feedback is a separate side effect and is disabled unless `--led-feedback` is
+supplied.
 
 ## Connect the BlueBoard
 
@@ -34,6 +37,29 @@ The client remembers the last successful device address. After a forced board
 power-off, restart it while holding C; the reconnect loop will claim it when it
 advertises again.
 
+## Button backlights
+
+In BLE-MIDI mode C, the four switch backlights are controlled by the host. Add
+`--led-feedback` to mirror every physical press and release:
+
+```powershell
+.\runBlueBoard.ps1 --debug --led-feedback
+```
+
+```bash
+./runBlueBoard.sh --debug --led-feedback
+```
+
+The handler sends channel 1 CC20-CC23 with value 127 on press and value 0 on
+release. It initializes all four LEDs off after each successful connection,
+suppresses duplicate states, preserves write order through a bounded worker,
+and detaches the worker without attempting writes after disconnect.
+
+LED feedback is independent of macro execution, so `--led-feedback` works in
+the default dry-run mode and can also be combined with `--execute-actions`.
+This is momentary physical-button feedback; it does not represent persistent
+amplifier, preset, or effect state.
+
 ## Windows setup
 
 From PowerShell in the repository root:
@@ -41,7 +67,7 @@ From PowerShell in the repository root:
 ```powershell
 .\setupBlueBoard.ps1
 .\scanBlueBoard.ps1 --debug --scan-timeout 15
-.\runBlueBoard.ps1 --debug --execute-actions
+.\runBlueBoard.ps1 --debug --execute-actions --led-feedback
 ```
 
 If local scripts are blocked for the current terminal only:
@@ -184,7 +210,10 @@ from D-Bus, producing a repeated connect/disconnect loop. On Linux, the client
 detects this exact condition and falls back to `gatttool` from the already
 required `bluez` package. The fallback subscribes directly to the BlueBoard's
 fixed BLE-MIDI handles and does not pair, bond, or trust the pedal. Other
-devices and platforms continue to use Bleak normally.
+devices and platforms continue to use Bleak normally. With `--led-feedback`,
+the same fallback uses one interactive ATT session for notifications and
+serialized LED writes, with a lightweight descriptor read to detect a silent
+disconnect and resume the normal reconnect loop.
 
 ## Installed CLI
 
@@ -193,7 +222,7 @@ The project is a standard Python package. Install it from a checkout:
 ```powershell
 py -m pip install .
 blueboard scan --debug
-blueboard run --execute-actions
+blueboard run --execute-actions --led-feedback
 ```
 
 On Linux, use the setup script so dependencies are installed into an isolated
@@ -204,7 +233,7 @@ because those distributions protect their system Python:
 ./setupBlueBoard.sh                 # repository-local environment
 ./setupBlueBoard.sh --scope global  # system-wide CLI
 ./setupBlueBoard.sh --scope global --user  # pipx-managed per-user CLI
-blueboard run --execute-actions
+blueboard run --execute-actions --led-feedback
 ```
 
 Available commands:
@@ -219,7 +248,8 @@ blueboard init-config   Create an editable configuration
 
 Useful options include `--config`, `--debug`, `--json-logs`, `--log-file`,
 `--address`, `--pair`, `--scan-timeout`, `--dry-run`, and
-`--execute-actions`. `run` defaults to dry-run behavior unless execution is
+`--execute-actions`. The `run` command also accepts `--led-feedback`. It
+defaults to dry-run behavior with LED feedback off unless each side effect is
 explicitly enabled. Ctrl+C is the panic/shutdown control and releases managed
 input state.
 
@@ -278,8 +308,8 @@ For machine-readable diagnostics:
 blueboard run --json-logs --log-file blueboard.jsonl
 ```
 
-Each run reports packet, event, action, failure, reconnect, runtime, and
-connected-time counters at shutdown.
+Each run reports packet, event, action, LED-write, failure, dropped-feedback,
+reconnect, runtime, and connected-time counters at shutdown.
 
 ## Development and packaging
 
@@ -296,10 +326,11 @@ py -m pip install -e ".[dev]"
 py -m build
 ```
 
-Outbound BLE writes and standards-valid BLE-MIDI encoding are available as
-internal building blocks. LED feedback is not enabled by default because the
-BlueBoard-specific outbound LED message semantics have not yet been confirmed
-from hardware.
+Outbound BLE writes and standards-valid BLE-MIDI encoding drive the opt-in LED
+feedback controller. Keep the feature opt-in until the rapid-press, forced
+disconnect, reconnect, and Linux hardware checks in
+[agent-docs/blueboard-dev-codex-summary.md](agent-docs/blueboard-dev-codex-summary.md)
+have been recorded against the physical board.
 
 ## Troubleshooting
 
@@ -314,6 +345,8 @@ from hardware.
   handled BlueZ omitting the board's final BLE-MIDI service. Do not pair or
   trust the pedal manually.
 - **Macros only appear in logs:** add `--execute-actions`.
+- **Button backlights remain off:** confirm the board was started while holding
+  C and add `--led-feedback`. The flag is independent of `--execute-actions`.
 - **Linux keyboard macros do not work:** rerun
   `./setupBlueBoard.sh --skip-system --add-input-group`, log out/in, and
   confirm `input` appears in `groups`. The launcher performs the same

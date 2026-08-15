@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 from blueboard_macro_handler.ble_midi import encodeBleMidi
-from blueboard_macro_handler.cli import loadReplayPackets, logWelcome, main
+from blueboard_macro_handler.cli import buildParser, loadReplayPackets, logWelcome, main
 
 
 class PackageCliTests(unittest.TestCase):
@@ -26,6 +26,10 @@ class PackageCliTests(unittest.TestCase):
     def testOutboundEncoderProducesBleMidiFrame(self) -> None:
         packet = encodeBleMidi(0xB0, bytes((20, 127)), timestamp=0)
         self.assertEqual(packet, bytes.fromhex("80 80 B0 14 7F"))
+
+    def testRunAcceptsLedFeedbackFlag(self) -> None:
+        args = buildParser().parse_args(["run", "--led-feedback"])
+        self.assertTrue(args.led_feedback)
 
     def testWelcomeLogIdentifiesAuthorAndProject(self) -> None:
         with self.assertLogs("blueboard.cli", level="INFO") as captured:

@@ -10,9 +10,10 @@ last-device persistence with discovery fallback, mocked BLE lifecycle tests,
 cooldowns, JSON logging, run summaries, outbound packet encoding/write
 primitives, console entry points, and wheel packaging.
 
-LED feedback remains intentionally disabled until its device-specific outbound
-message semantics are confirmed on hardware. Linux BLE and uinput behavior
-also require final validation on a Linux host with the physical BlueBoard.
+Momentary LED feedback is implemented behind `blueboard run --led-feedback`.
+It remains opt-in until rapid-press, forced-disconnect, and reconnect behavior
+is validated on physical hardware. Linux BLE and uinput behavior also require
+final validation on a Linux host with the physical BlueBoard.
 
 ### Windows installation note
 

@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from windowsActions import INPUT_KEYBOARD, KEYEVENTF_KEYUP, KEYS, Input, WindowsActions
+from windowsActions import INPUT_KEYBOARD, KEYEVENTF_KEYUP, KEYS, WindowsActions
 
 
 class WindowsActionsTests(unittest.TestCase):

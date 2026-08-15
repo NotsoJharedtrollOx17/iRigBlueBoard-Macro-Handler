@@ -13,6 +13,7 @@ from .actions import ActionDispatcher
 from .ble_midi import BleMidiDecoder
 from .client import BlueBoardClient, discoverBlueBoards
 from .config import ConfigError, configAsDict, loadConfig
+from .led_feedback import LedFeedbackController
 from .logging_utils import configureLogging
 from .models import RunMetrics
 from .router import Router
@@ -73,6 +74,11 @@ def buildParser() -> argparse.ArgumentParser:
     mode = run.add_mutually_exclusive_group()
     mode.add_argument("--execute-actions", action="store_true", help="enable keyboard, UDP, and launch actions")
     mode.add_argument("--dry-run", action="store_true", help="route and log without side effects (default)")
+    run.add_argument(
+        "--led-feedback",
+        action="store_true",
+        help="mirror A-D button state on the BlueBoard backlights",
+    )
     run.add_argument("--state-file", type=Path, default=defaultStatePath())
 
     replay = commands.add_parser("replay", help="replay recorded BLE-MIDI packet fixtures")
@@ -119,7 +125,8 @@ async def asyncCommand(args: argparse.Namespace) -> RunMetrics | None:
     metrics = RunMetrics()
     args.metrics = metrics
     actions = ActionDispatcher(execute=args.execute_actions)
-    router = Router(config, actions, metrics)
+    ledFeedback = LedFeedbackController(metrics) if getattr(args, "led_feedback", False) else None
+    router = Router(config, actions, metrics, ledFeedback)
     try:
         if args.command == "replay":
             decoder = BleMidiDecoder()
@@ -130,7 +137,17 @@ async def asyncCommand(args: argparse.Namespace) -> RunMetrics | None:
             return metrics
         address = args.address or loadLastAddress(args.state_file)
         if address and not args.address: logger.info("using last known address=%s", address)
-        client = BlueBoardClient(router.handleEvent, router.releaseAll, nameSubstring=args.name or config.name, address=address, pair=config.pair if args.pair is None else args.pair, scanTimeout=args.scan_timeout or config.scanTimeout, metrics=metrics, statePath=args.state_file)
+        client = BlueBoardClient(
+            router.handleEvent,
+            router.releaseAll,
+            nameSubstring=args.name or config.name,
+            address=address,
+            pair=config.pair if args.pair is None else args.pair,
+            scanTimeout=args.scan_timeout or config.scanTimeout,
+            metrics=metrics,
+            statePath=args.state_file,
+            ledFeedback=ledFeedback,
+        )
         await client.run()
         return metrics
     finally:

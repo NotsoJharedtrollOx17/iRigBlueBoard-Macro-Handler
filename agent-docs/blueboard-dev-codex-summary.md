@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document is the working brief for the `dev` branch of `iRigBlueBoard-Macro-Handler`. It preserves the project as a reusable, transport-agnostic macro handler while documenting the BlueBoard-specific BLE-MIDI adapter and the next LED-feedback milestone.
+This document is the working brief for the `dev` branch of `iRigBlueBoard-Macro-Handler`. It preserves the project as a reusable, transport-agnostic macro handler while documenting the BlueBoard-specific BLE-MIDI adapter and the opt-in LED-feedback implementation.
 
 ## Confirmed hardware contract
 
@@ -39,13 +39,13 @@ The boundaries are intentional:
 - `ble_midi.py` decodes and encodes BLE-MIDI packets.
 - `router.py` converts normalized MIDI events to press/release edges, applies cooldowns, and owns button state.
 - `actions/` is cross-platform macro output.
-- A future LED controller is separate from macros: it receives desired LED state but does not leak GATT details into the router.
+- `LedFeedbackController` is separate from macros: it receives desired LED state while transport-specific GATT details remain in the client.
 
 Keep the generic macro layer MIDI-independent. It should consume gestures and emit abstract actions; only the BlueBoard adapter knows CC20–23.
 
 ## Important dev-branch improvements
 
-- Python package version is 0.2.0, Python 3.10+, with `bleak` as the BLE dependency and `evdev` as the Linux extra.
+- Python package version is 0.3.0, Python 3.10+, with `bleak` as the BLE dependency and `evdev` as the Linux extra.
 - The command application exposes `scan`, `run`, `replay`, `validate`, and `init-config`.
 - Actions are dry-run by default; `--execute-actions` is required for keyboard, UDP, or launch side effects.
 - Last successful device address is persisted, but discovery falls back to service/name matching if it changes.
@@ -69,7 +69,13 @@ Keep the generic macro layer MIDI-independent. It should consume gestures and em
 
 Do not run the application permanently as root. `/dev/uinput` access is intentionally granted through the `input` group and a narrow udev rule.
 
-## LED feedback: next feature
+## LED feedback: implemented opt-in feature
+
+The `dev.button-backlights` branch exposes momentary feedback through
+`blueboard run --led-feedback`. The flag remains opt-in until physical rapid-
+press and reconnection validation is recorded. It is independent of
+`--execute-actions`, so macro failures and dry-run mode do not suppress visual
+feedback.
 
 In mode C the per-switch LEDs are host controlled. Echo the button’s CC back on channel 1:
 
@@ -89,7 +95,7 @@ packet = encodeBleMidi(0xB0, bytes((20, 127)))
 await client.writePacket(packet, response=False)
 ```
 
-### Correct implementation shape
+### Implemented shape
 
 Create `LedFeedbackController` with a bounded `asyncio.Queue`. It accepts abstract requests such as `setLed(cc, isOn)` and owns packet encoding plus `client.writePacket`. Bind it to the active client only after connection succeeds; unbind on disconnect.
 
@@ -106,23 +112,26 @@ On connect, clear A–D once to establish a known visual state. On disconnect, c
 
 Do not create one async task per MIDI event. A single feedback worker preserves output ordering and prevents bursty presses from creating uncontrolled tasks.
 
-## Tests required before enabling LEDs by default
+## Validation required before enabling LEDs by default
 
-- Unit test `encodeBleMidi` for CC20–23 values 0 and 127.
-- Unit test that each router edge emits exactly one feedback request.
-- Unit test that repeated identical values do not emit duplicate writes.
-- Mock-client test that `writePacket(..., response=False)` is serialized.
+Automated coverage now verifies encoding for every CC/state pair, one request
+per accepted router edge, duplicate suppression, serialized writes, connection
+initialization, reconnect rebinding, write-failure isolation, and the
+interactive Linux compatibility session. The remaining gates require the
+physical board:
+
 - Hardware test: press and release A–D individually, then perform 100 rapid cycles per button.
 - Hardware test: force a board power-off while a LED is on; reconnect and verify all LEDs initialize off.
 - Linux test using both regular Bleak and the `gatttool` fallback when applicable.
 
 ## Development sequence
 
-1. Complete Linux Mint dry-run and executed-action validation.
-2. Add LED feedback behind `--led-feedback` or a configuration flag.
-3. Add complete unit coverage and hardware evidence.
-4. Make it default only after reconnection and rapid-press tests pass.
-5. Later, add a distinct persistent-state mode for Katana effect state. Do not confuse it with momentary press echo.
+1. Complete Linux Mint dry-run and executed-action validation. Done.
+2. Add LED feedback behind `--led-feedback`. Done.
+3. Add complete unit coverage. Done; physical hardware evidence remains.
+4. Make it default only after reconnection and rapid-press hardware tests pass.
+5. Consider `1.0.0` only after both platform hardware records and the other release gates are complete.
+6. Later, add a distinct persistent-state mode for Katana effect state. Do not confuse it with momentary press echo.
 
 ## References
 
