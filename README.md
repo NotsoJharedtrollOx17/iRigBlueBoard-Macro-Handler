@@ -24,6 +24,10 @@ Actions are disabled unless `--execute-actions` is supplied. BlueBoard LED
 feedback is a separate side effect and is disabled unless `--led-feedback` is
 supplied.
 
+## Author
+
+- Abraham Jhared Flores Azcona _(NotsoJharedtrollOx17)_ `abrahamjhared.flores@gmail.com`
+
 ## Connect the BlueBoard
 
 1. Disconnect it from Android, a DAW, or any other active BLE client.
@@ -367,3 +371,23 @@ users explicitly choose whether outbound LED writes are enabled.
   confirm `input` appears in `groups`. The launcher performs the same
   `/dev/uinput` and group checks before `--execute-actions` starts.
 - **Action fails:** the failure is logged and BLE processing continues.
+
+## License
+
+[MIT](LICENSE) © 2026 Abraham Jhared Flores Azcona.
+
+## Citation
+
+If you use this software in a project, publication, or technical report,
+please cite it as:
+
+```bibtex
+@misc{
+    floresazcona2026irigblueboard,
+    title = {iRig BlueBoard Macro Handler},
+    author = {Flores-Azcona, Abraham Jhared},
+    year = {2026},
+    month = {Aug},
+    url = {https://github.com/NotsoJharedtrollOx17/iRigBlueBoard-Macro-Handler}
+}
+```
