@@ -4,15 +4,15 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "blueboard-macro-handler"
-version = "0.3.0"
+version = "1.0.0"
 description = "Cross-platform BLE-MIDI macro handler for the iRig BlueBoard"
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
+license = {file = "LICENSE"}
 authors = [{name = "Abraham Jhared Flores Azcona"}]
 dependencies = ["bleak>=1.0,<4"]
 classifiers = [
-  "Development Status :: 4 - Beta",
+  "Development Status :: 5 - Production/Stable",
   "Environment :: Console",
   "Operating System :: Microsoft :: Windows",
   "Operating System :: POSIX :: Linux",

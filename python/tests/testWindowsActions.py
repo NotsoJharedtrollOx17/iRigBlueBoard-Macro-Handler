@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from windowsActions import INPUT_KEYBOARD, KEYEVENTF_KEYUP, KEYS, WindowsActions
+from windowsActions import INPUT_KEYBOARD, KEYEVENTF_KEYUP, KEYS, Input, WindowsActions
 
 
 class WindowsActionsTests(unittest.TestCase):
@@ -23,7 +23,8 @@ class WindowsActionsTests(unittest.TestCase):
             return count
         WindowsActions(sendInput=fakeSendInput).invoke("altTab")
         self.assertEqual(received["count"], 4)
-        self.assertEqual(received["inputSize"], 40)
+        expectedSize = 40 if sys.platform == "win32" else __import__("ctypes").sizeof(Input)
+        self.assertEqual(received["inputSize"], expectedSize)
         self.assertEqual(received["inputs"][0].ki.wVk, KEYS["ALT"])
 
     def testUnknownActionDoesNotCallNativeApi(self) -> None:

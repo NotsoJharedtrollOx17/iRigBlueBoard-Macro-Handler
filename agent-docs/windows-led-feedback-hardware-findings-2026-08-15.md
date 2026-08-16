@@ -79,7 +79,14 @@ The reset command cannot guarantee recovery because the device exposes no
 application-level acknowledgement or LED-state readback. If it does not clear
 the board, power-cycling the BlueBoard remains the required hardware recovery.
 
-## Required hardware validation before v1.0
+## v1.0.0 release validation
+
+The maintainer subsequently confirmed that the corrected fixed-timestamp
+implementation works end-to-end on the physical board, including Linux Mint
+testing through the BlueZ `gatttool` compatibility path. The conservative
+retry policy and explicit opt-in flag remain in place.
+
+The following checks remain useful as regression coverage:
 
 1. Confirm every outbound LED debug line begins with `packet=80 80` and no
    periodic reconciliation messages appear.

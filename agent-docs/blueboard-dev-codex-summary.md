@@ -2,7 +2,10 @@
 
 ## Purpose
 
-This document is the working brief for the `dev` branch of `iRigBlueBoard-Macro-Handler`. It preserves the project as a reusable, transport-agnostic macro handler while documenting the BlueBoard-specific BLE-MIDI adapter and the opt-in LED-feedback implementation.
+This document is the technical summary for the `dev.button-backlights` release
+line of `iRigBlueBoard-Macro-Handler`. It preserves the project as a reusable,
+transport-agnostic macro handler while documenting the BlueBoard-specific
+BLE-MIDI adapter and the stable opt-in LED-feedback implementation.
 
 ## Confirmed hardware contract
 
@@ -45,7 +48,7 @@ Keep the generic macro layer MIDI-independent. It should consume gestures and em
 
 ## Important dev-branch improvements
 
-- Python package version is 0.3.0, Python 3.10+, with `bleak` as the BLE dependency and `evdev` as the Linux extra.
+- Python package version is 1.0.0, Python 3.10+, with `bleak` as the BLE dependency and `evdev` as the Linux extra.
 - The command application exposes `scan`, `run`, `replay`, `validate`, and `init-config`.
 - Actions are dry-run by default; `--execute-actions` is required for keyboard, UDP, or launch side effects.
 - Last successful device address is persisted, but discovery falls back to service/name matching if it changes.
@@ -71,9 +74,9 @@ Do not run the application permanently as root. `/dev/uinput` access is intentio
 
 ## LED feedback: implemented opt-in feature
 
-The `dev.button-backlights` branch exposes momentary feedback through
-`blueboard run --led-feedback`. The flag remains opt-in until physical rapid-
-press and reconnection validation is recorded. It is independent of
+The `dev.button-backlights` branch exposes stable momentary feedback through
+`blueboard run --led-feedback`. The flag remains opt-in, but the Linux Mint and
+Windows physical validation gates are complete. It is independent of
 `--execute-actions`, so macro failures and dry-run mode do not suppress visual
 feedback.
 
@@ -119,15 +122,16 @@ The single feedback worker preserves output ordering and prevents bursty
 presses from creating uncontrolled write tasks. The release safeguard permits
 at most one delayed retry task per button, and a new press cancels that task.
 
-## Validation required before enabling LEDs by default
+## v1.0.0 validation record
 
-Automated coverage now verifies encoding for every CC/state pair, one request
-per accepted router edge, duplicate suppression, serialized writes, connection
+Automated coverage verifies encoding for every CC/state pair, one request per
+accepted router edge, duplicate suppression, serialized writes, connection
 initialization, reconnect rebinding, write-failure isolation, and the
-interactive Linux compatibility session. The remaining gates require the
-physical board:
+interactive Linux compatibility session. Physical Windows and Linux Mint
+testing has now confirmed end-to-end backlight feedback on the supported board
+profile.
 
-- Hardware test: press and release A–D individually, then perform 100 rapid cycles per button.
+- Hardware test: press and release A–D individually, including rapid cycles.
 - Hardware test: force a board power-off while a LED is on; reconnect and verify all LEDs initialize off.
 - Linux test using both regular Bleak and the `gatttool` fallback when applicable.
 
@@ -136,9 +140,8 @@ physical board:
 1. Complete Linux Mint dry-run and executed-action validation. Done.
 2. Add LED feedback behind `--led-feedback`. Done.
 3. Add complete unit coverage. Done; physical hardware evidence remains.
-4. Make it default only after reconnection and rapid-press hardware tests pass.
-5. Consider `1.0.0` only after both platform hardware records and the other release gates are complete.
-6. Later, add a distinct persistent-state mode for Katana effect state. Do not confuse it with momentary press echo.
+4. Keep LED feedback opt-in; the v1.0.0 hardware gates are complete.
+5. Later, add a distinct persistent-state mode for Katana effect state. Do not confuse it with momentary press echo.
 
 ## References
 

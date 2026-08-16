@@ -341,11 +341,11 @@ py -m pip install -e ".[dev]"
 py -m build
 ```
 
-Outbound BLE writes and standards-valid BLE-MIDI encoding drive the opt-in LED
-feedback controller. Keep the feature opt-in until the rapid-press, forced
-disconnect, reconnect, and Linux hardware checks in
-[agent-docs/blueboard-dev-codex-summary.md](agent-docs/blueboard-dev-codex-summary.md)
-have been recorded against the physical board.
+Outbound BLE writes and standards-valid BLE-MIDI encoding drive the stable,
+opt-in LED feedback controller released in v1.0.0. The rapid-press,
+forced-disconnect, reconnect, and Linux Mint hardware checks have been recorded
+against the supported physical board profile. The feature remains opt-in so
+users explicitly choose whether outbound LED writes are enabled.
 
 ## Troubleshooting
 

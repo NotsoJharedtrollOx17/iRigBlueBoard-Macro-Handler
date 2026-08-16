@@ -1,6 +1,6 @@
 # Python Implementation Roadmap
 
-## Implementation update (version 0.3.0)
+## Release update (version 1.0.0)
 
 The primary roadmap items are now implemented in the installable
 `blueboard_macro_handler` package: typed and backward-compatible configuration,
@@ -10,10 +10,11 @@ last-device persistence with discovery fallback, mocked BLE lifecycle tests,
 cooldowns, JSON logging, run summaries, outbound packet encoding/write
 primitives, console entry points, and wheel packaging.
 
-Momentary LED feedback is implemented behind `blueboard run --led-feedback`.
-It remains opt-in until rapid-press, forced-disconnect, and reconnect behavior
-is validated on physical hardware. Linux BLE and uinput behavior also require
-final validation on a Linux host with the physical BlueBoard.
+Momentary LED feedback is a stable, opt-in feature behind
+`blueboard run --led-feedback`. Rapid press/release, reconnect, and Linux Mint
+hardware validation are complete for the supported iRig BlueBoard profile.
+The flag remains opt-in so users can choose whether outbound LED writes are
+enabled.
 
 ### Windows installation note
 

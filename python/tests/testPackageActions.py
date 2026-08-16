@@ -1,4 +1,5 @@
 import logging
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -28,7 +29,8 @@ class PackageActionsTests(unittest.TestCase):
         self.assertIn("keys=CTRL+F12", captured.output[0])
 
     def testWindowsAbiAndKeyValidation(self) -> None:
-        self.assertEqual(__import__("ctypes").sizeof(Input), 40)
+        if sys.platform == "win32":
+            self.assertEqual(__import__("ctypes").sizeof(Input), 40)
         self.assertEqual(keyCode("F12"), 0x7B)
         with self.assertRaises(ValueError): keyCode("NOT_A_KEY")
 
@@ -36,7 +38,8 @@ class PackageActionsTests(unittest.TestCase):
         received = {}
         def send(count, inputs, size): received.update(count=count, size=size); return count
         WindowsKeyboard(send).sendCombo(("CTRL", "R"))
-        self.assertEqual(received, {"count": 4, "size": 40})
+        expectedSize = 40 if sys.platform == "win32" else __import__("ctypes").sizeof(Input)
+        self.assertEqual(received, {"count": 4, "size": expectedSize})
 
     def testLaunchUsesArgumentArrayWithoutShell(self) -> None:
         action = ActionSpec("launch", program="example", args=("--safe",))

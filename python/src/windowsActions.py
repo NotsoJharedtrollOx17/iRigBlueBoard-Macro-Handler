@@ -95,8 +95,9 @@ class WindowsActions:
             raise RuntimeError("Windows SendInput is unavailable on this platform")
 
         inputs = self.buildInputs(action)
-        ctypes.set_last_error(0)
+        if hasattr(ctypes, "set_last_error"):
+            ctypes.set_last_error(0)
         sent = self.sendInput(len(inputs), inputs, ctypes.sizeof(Input))
         if sent != len(inputs):
-            error = ctypes.get_last_error()
+            error = ctypes.get_last_error() if hasattr(ctypes, "get_last_error") else 0
             raise OSError(error, f"SendInput sent {sent} of {len(inputs)} events")

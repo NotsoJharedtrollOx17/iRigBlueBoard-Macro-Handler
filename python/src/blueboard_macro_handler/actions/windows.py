@@ -77,10 +77,12 @@ class WindowsKeyboard:
     def _send(self, inputs) -> None:
         if self.sendInput is None:
             raise RuntimeError("Windows SendInput is unavailable")
-        ctypes.set_last_error(0)
+        if hasattr(ctypes, "set_last_error"):
+            ctypes.set_last_error(0)
         sent = self.sendInput(len(inputs), inputs, ctypes.sizeof(Input))
         if sent != len(inputs):
-            raise OSError(ctypes.get_last_error(), f"SendInput sent {sent} of {len(inputs)} events")
+            lastError = ctypes.get_last_error() if hasattr(ctypes, "get_last_error") else 0
+            raise OSError(lastError, f"SendInput sent {sent} of {len(inputs)} events")
 
     def sendCombo(self, keys: tuple[str, ...]) -> None:
         self._send(self.buildInputs(keys))

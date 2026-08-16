@@ -193,9 +193,20 @@ fallback is treated as a stable public backend.
 
 ## Release judgment
 
-The work materially advances Linux support and justifies the `0.3.0`
-development version. It is not yet sufficient evidence for `1.0.0` because the
-Linux compatibility path is firmware-handle-specific, the updater currently
-targets `main` regardless of the active branch, and the full suite is not yet
-green on Linux. None of these invalidate the implementation; they define the
-remaining stabilization work.
+The work materially advanced Linux support and justified the historical
+`0.3.0` development version. Subsequent physical validation on Linux Mint
+confirmed stable end-to-end backlight feedback through the gatttool fallback,
+including initialization and sustained connection behavior. That follow-up
+validation supports the `1.0.0` release for the tested BlueBoard firmware
+profile. The fixed handles, legacy `gatttool` dependency, updater branch
+behavior, and platform-specific test collection remain documented maintenance
+limitations rather than blockers for this hardware-targeted release.
+
+## v1.0.0 release follow-up — 2026-08-15
+
+The maintainer confirmed that the Linux Mint physical backlight test works
+end-to-end. The live validation reached `backend=bluez-gatttool`, subscribed at
+handle `0x0023`, emitted the four fixed-timestamp initialization frames to
+`0x0022`, remained connected through repeated health checks, and disconnected
+cleanly. Windows and Linux hardware validation are now recorded in the release
+summary.
