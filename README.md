@@ -41,6 +41,18 @@ its installation-first flow:
 | [Platform operations and hardware findings](agent-docs/platform-operations-and-hardware-findings.md) | Windows/Linux procedures, BlueZ investigation, LED evidence, and hardware validation |
 | [Release history and roadmap](agent-docs/release-history-and-roadmap.md) | Milestones, evidence, known limitations, release checklist, and future work |
 
+## Windows 10 demonstration
+
+<video controls preload="metadata" width="360">
+  <source src="video-demo/blueboardMacroHandlerDemo-v1.0.0.mp4" type="video/mp4">
+  Your browser does not support inline video. [Open the MP4 demonstration](video-demo/blueboardMacroHandlerDemo-v1.0.0.mp4).
+</video>
+
+The [v1.0.0 Windows 10 demonstration](video-demo/blueboardMacroHandlerDemo-v1.0.0.mp4)
+is 2:36 long and 25.11 MiB. It shows the BlueBoard applet operating end to end
+with stereo AAC audio. If GitHub's preview omits the volume control, open the
+MP4 link directly in the browser.
+
 ## Connect the BlueBoard
 
 1. Disconnect it from Android, a DAW, or any other active BLE client.
